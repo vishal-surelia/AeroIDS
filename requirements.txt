@@ -1,0 +1,22 @@
+# ANALOG ZERO Drone IDS runtime dependencies
+
+# MAVLink/SITL communication
+pymavlink>=2.4.0
+
+# Configuration and numerical processing
+PyYAML>=6.0.1
+numpy>=1.24.0
+
+# Web mission console and real-time streaming
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+websockets>=12.0
+
+# Test suite
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+
+# Optional external simulator:
+# Install ArduPilot SITL separately and ensure sim_vehicle.py is on PATH.
+# It is not distributed through the Python Package Index.

@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANALOG ZERO | Drone IDS Mission Console</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --pale: #ECEFF1;
+  --aqua: #8BC34A;
+  --steel: #607D8B;
+  --navy: #263238;
+  --white: #FFFFFF;
+  --critical: #B42318;
+  --error: #C2410C;
+  --warning: #A16207;
+  --ok: #047857;
+  --line: color-mix(in srgb, var(--aqua) 70%, white);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  overflow: hidden;
+  background: var(--pale);
+  color: var(--navy);
+  font: 15px/1.4 Arial, Helvetica, sans-serif;
+}
+button, select, input { font: inherit; color: inherit; }
+button, select, input[type="search"] {
+  min-height: 36px;
+  border: 1px solid var(--steel);
+  background: var(--white);
+  border-radius: 3px;
+}
+button { cursor: pointer; }
+button:hover, select:hover, input:hover { border-color: var(--navy); }
+button:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--aqua) 70%, transparent);
+  outline-offset: 1px;
+}
+.mono { font-family: Consolas, "Liberation Mono", monospace; }
+.topbar {
+  height: 58px;
+  display: flex;
+  align-items: stretch;
+  background: var(--navy);
+  color: var(--pale);
+  border-bottom: 4px solid var(--steel);
+}
+.brand {
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 18px;
+  border-right: 1px solid var(--steel);
+}
+.brand strong { font-size: 17px; letter-spacing: .08em; }
+.brand span { color: var(--aqua); font-size: 12px; letter-spacing: .04em; }
+.top-metrics { flex: 1; display: grid; grid-template-columns: repeat(6, minmax(105px, 1fr)); }
+.top-metric {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 14px;
+  border-right: 1px solid var(--steel);
+  min-width: 0;
+}
+.top-metric label { color: var(--aqua); font-size: 11px; text-transform: uppercase; }
+.top-metric b { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.live-cell { width: 150px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--critical); }
+.live-cell.connected .live-dot { background: var(--aqua); }
+.shell { display: flex; height: calc(100vh - 58px); }
+.sidebar {
+  width: 250px;
+  flex: 0 0 250px;
+  display: flex;
+  flex-direction: column;
+  background: var(--navy);
+  color: var(--pale);
+  border-right: 1px solid var(--steel);
+}
+.side-section { padding: 13px; border-bottom: 1px solid var(--steel); }
+.side-title {
+  margin-bottom: 8px;
+  color: var(--aqua);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.nav-btn {
+  width: 100%;
+  min-height: 38px;
+  margin: 3px 0;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--pale);
+  background: transparent;
+  border: 1px solid transparent;
+  text-align: left;
+}
+.nav-btn:hover { border-color: var(--aqua); }
+.nav-btn.active { background: var(--aqua); color: var(--navy); font-weight: 700; }
+.nav-count { min-width: 24px; padding: 1px 5px; border-radius: 2px; background: var(--steel); text-align: center; }
+.nav-btn.active .nav-count { background: var(--navy); color: var(--pale); }
+.detector-mini {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  gap: 7px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--steel) 70%, transparent);
+  font-size: 13px;
+}
+.detector-mini:last-child { border-bottom: 0; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--steel); }
+.status-dot.active { background: var(--aqua); box-shadow: 0 0 0 2px color-mix(in srgb, var(--aqua) 35%, transparent); }
+.status-dot.hot { background: var(--critical); }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--pale); }
+.ribbon {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--white);
+  border-bottom: 1px solid var(--aqua);
+  color: var(--steel);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.ribbon b { color: var(--navy); }
+.ribbon .sep { width: 1px; height: 20px; background: var(--aqua); }
+.content { flex: 1; min-height: 0; overflow: auto; padding: 14px; }
+.view { display: none; }
+.view.active { display: block; }
+.panel {
+  background: var(--white);
+  border: 1px solid var(--aqua);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.panel-header {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 11px;
+  background: var(--pale);
+  border-bottom: 1px solid var(--aqua);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.panel-header small { color: var(--steel); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.panel-body { padding: 10px; }
+.grid-operations { display: grid; grid-template-columns: minmax(460px, 1.6fr) minmax(320px, .8fr); gap: 12px; }
+.map-panel { min-height: 455px; }
+.map-wrap { position: relative; height: 419px; background: #263238; }
+#mission-map, #security-map { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+#mission-map { z-index: 1; background: #263238; }
+#security-map { z-index: 0; }
+.leaflet-container { font: 13px Arial, sans-serif; }
+.leaflet-control-zoom a { color: #263238 !important; }
+.uav-marker { width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 22px solid #76FF03; filter: drop-shadow(0 0 2px #000); transform-origin: 50% 70%; }
+.mission-btn { min-width: 145px; padding: 0 14px; color: #263238; background: #8BC34A !important; border-color: #689F38 !important; font-weight: 700; text-transform: uppercase; }
+.mission-btn.running { color: #FFFFFF; background: #B42318 !important; border-color: #B42318 !important; }
+.waypoint-marker { display: grid; place-items: center; width: 19px; height: 19px; border: 2px solid #FFFFFF; border-radius: 50%; background: #33691E; color: #FFFFFF; font-size: 10px; font-weight: 700; }
+.map-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 5px 8px;
+  color: var(--pale);
+  background: color-mix(in srgb, var(--navy) 88%, transparent);
+  font-size: 12px;
+  z-index: 2;
+}
+.instrument-grid { display: grid; grid-template-columns: repeat(2, 1fr); border-top: 1px solid var(--aqua); }
+.instrument {
+  min-height: 75px;
+  padding: 9px 11px;
+  border-right: 1px solid var(--aqua);
+  border-bottom: 1px solid var(--aqua);
+}
+.instrument:nth-child(2n) { border-right: 0; }
+.instrument label { display: block; color: var(--steel); font-size: 11px; text-transform: uppercase; }
+.instrument b { display: inline-block; margin-top: 4px; font-size: 22px; }
+.instrument small { color: var(--steel); }
+.attitude-box { height: 179px; display: grid; place-items: center; border-bottom: 1px solid var(--aqua); background: var(--pale); }
+.attitude { width: 150px; height: 150px; border: 2px solid var(--navy); border-radius: 50%; overflow: hidden; position: relative; background: var(--steel); }
+.attitude::before { content: ""; position: absolute; inset: 50% 0 0; background: var(--aqua); }
+.horizon { position: absolute; left: -50%; top: 50%; width: 200%; height: 200%; transition: transform .2s linear; }
+.horizon::before { content: ""; position: absolute; left: 0; top: 0; width: 100%; border-top: 2px solid var(--white); }
+.attitude-center { position: absolute; left: 50%; top: 50%; width: 46px; height: 2px; background: var(--navy); transform: translate(-50%, -50%); z-index: 2; }
+.readouts { display: grid; grid-template-columns: repeat(2, 1fr); }
+.readout { padding: 8px 10px; border-bottom: 1px solid var(--aqua); }
+.readout:nth-child(odd) { border-right: 1px solid var(--aqua); }
+.readout label { display: block; color: var(--steel); font-size: 11px; text-transform: uppercase; }
+.readout b { font-size: 16px; }
+.lower-grid { display: grid; grid-template-columns: 1.55fr .95fr; gap: 12px; margin-top: 12px; }
+.table-wrap { max-height: 355px; overflow: auto; }
+.alert-page { height: calc(100vh - 190px); display: flex; flex-direction: column; }
+.alert-page .table-wrap { flex: 1; max-height: none; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 8px 9px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { position: sticky; top: 0; z-index: 1; background: var(--pale); color: var(--steel); font-size: 11px; text-transform: uppercase; }
+tr:hover td { background: color-mix(in srgb, var(--pale) 65%, white); }
+.sev { display: inline-block; padding: 2px 6px; border: 1px solid currentColor; font-size: 11px; font-weight: 700; }
+.sev-critical { color: var(--critical); }
+.sev-error { color: var(--error); }
+.sev-warning { color: var(--warning); }
+.sev-info { color: var(--steel); }
+.sev-debug { color: var(--steel); }
+.coverage-grid { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 12px; }
+.detector-card { min-height: 165px; display: flex; flex-direction: column; }
+.detector-card .panel-body { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.card-state { display: flex; justify-content: space-between; align-items: center; color: var(--steel); font-size: 12px; text-transform: uppercase; }
+.card-state b { color: var(--ok); }
+.card-state.hot b { color: var(--critical); }
+.detector-card p { margin: 0; color: var(--navy); }
+.mitre { margin-top: auto; padding-top: 8px; color: var(--steel); font-size: 12px; }
+.telemetry-page { display: grid; grid-template-columns: 330px 1fr; gap: 12px; }
+.telemetry-grid { display: grid; grid-template-columns: repeat(3, minmax(160px, 1fr)); gap: 10px; }
+.telemetry-tile { min-height: 90px; padding: 10px; background: var(--white); border: 1px solid var(--aqua); }
+.telemetry-tile label { color: var(--steel); font-size: 11px; text-transform: uppercase; }
+.telemetry-tile b { display: block; margin-top: 5px; font-size: 21px; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+.toolbar input { flex: 1; padding: 0 9px; }
+.toolbar select { padding: 0 7px; }
+.validation-list { display: grid; gap: 8px; }
+.validation-row { display: grid; grid-template-columns: 75px 210px 1fr 135px; gap: 10px; align-items: center; padding: 10px; background: var(--white); border: 1px solid var(--aqua); }
+.validation-state { font-weight: 700; color: var(--steel); }
+.validation-row.detected { border-left: 5px solid var(--critical); }
+.validation-row.detected .validation-state { color: var(--critical); }
+.forensic-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.hash { word-break: break-all; font-size: 12px; color: var(--steel); }
+.downloads { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.downloads a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; color: var(--white); background: var(--steel); border: 1px solid var(--steel); text-decoration: none; }
+.console-shell { height: calc(100vh - 190px); display: flex; flex-direction: column; }
+.console-out { flex: 1; overflow: auto; margin: 0; padding: 12px; background: var(--navy); color: var(--pale); font: 14px/1.55 Consolas, monospace; white-space: pre-wrap; }
+.log-critical { color: #FCA5A5; }
+.log-error { color: #FDBA74; }
+.log-warning { color: #FDE68A; }
+.log-info { color: var(--pale); }
+.log-debug { color: var(--aqua); }
+.empty { padding: 30px; text-align: center; color: var(--steel); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--pale); }
+::-webkit-scrollbar-thumb { background: var(--steel); }
+@media (max-width: 1100px) {
+  body { overflow: auto; }
+  .topbar { height: auto; flex-wrap: wrap; }
+  .brand { width: 100%; height: 52px; }
+  .top-metrics { flex-basis: 100%; grid-template-columns: repeat(3, 1fr); }
+  .shell { height: auto; }
+  .sidebar { width: 205px; flex-basis: 205px; }
+  .grid-operations, .lower-grid, .telemetry-page, .forensic-grid { grid-template-columns: 1fr; }
+  .coverage-grid, .telemetry-grid { grid-template-columns: 1fr 1fr; }
+  .validation-row { grid-template-columns: 70px 1fr; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><strong>ANALOG ZERO</strong><span>DRONE IDS · PUSHPAK 2026</span></div>
+  <div class="top-metrics">
+    <div class="top-metric"><label>MAVLink</label><b id="h-link">OFFLINE</b></div>
+    <div class="top-metric"><label>IDS Engine</label><b id="h-engine">STOPPED</b></div>
+    <div class="top-metric"><label>Messages</label><b id="h-msgs" class="mono">0</b></div>
+    <div class="top-metric"><label>Message Rate</label><b><span id="h-rate" class="mono">0.0</span> /s</b></div>
+    <div class="top-metric"><label>Security Alerts</label><b id="h-alerts" class="mono">0</b></div>
+    <div class="top-metric"><label>Uptime</label><b id="h-uptime" class="mono">00:00:00</b></div>
+  </div>
+  <div id="h-live" class="live-cell"><span class="live-dot"></span><span id="h-ws">OFFLINE</span></div>
+</header>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="side-section">
+      <div class="side-title">Operational Views</div>
+      <button class="nav-btn active" data-view="operations">Security Map <span class="nav-count" id="nav-ops-count">0</span></button>
+      <button class="nav-btn" data-view="telemetry">Telemetry <span class="nav-count" id="nav-msg-count">0</span></button>
+      <button class="nav-btn" data-view="detectors">Detection Units <span class="nav-count">6</span></button>
+      <button class="nav-btn" data-view="alerts">Alerts <span class="nav-count" id="nav-alert-count">0</span></button>
+      <button class="nav-btn" data-view="validation">Validation <span class="nav-count" id="nav-test-count">0/6</span></button>
+      <button class="nav-btn" data-view="forensics">Forensics <span class="nav-count" id="nav-evidence-count">0</span></button>
+      <button class="nav-btn" data-view="console">Console <span class="nav-count">LIVE</span></button>
+    </div>
+    <div class="side-section">
+      <div class="side-title">Detector Status</div>
+      <div id="side-detectors"></div>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="ribbon">
+      <span>Source <b id="r-source">—</b></span><span class="sep"></span>
+      <span>System <b id="r-system">—</b></span><span class="sep"></span>
+      <span>Last Message <b id="r-last-type">—</b></span><span class="sep"></span>
+      <span>GPS <b id="r-gps">No Fix</b></span><span class="sep"></span>
+      <span>Link Quality <b id="r-link">—</b></span><span class="sep"></span>
+      <span>Chain <b id="r-chain">—</b></span>
+    </div>
+    <div class="content">
+      <section id="view-operations" class="view active">
+        <div class="grid-operations">
+          <div class="panel map-panel">
+            <div class="panel-header"><span>Satellite Security Map <small id="map-caption">Waiting for GPS telemetry</small></span><button id="mission-start" class="mission-btn" type="button">START MISSION</button></div>
+            <div class="map-wrap">
+              <canvas id="security-map"></canvas>
+              <div id="mission-map"></div>
+              <div class="map-overlay" id="map-overlay">MONITORING · NO TRACK</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">Primary Flight Evidence</div>
+            <div class="attitude-box">
+              <div class="attitude"><div id="horizon" class="horizon"></div><div class="attitude-center"></div></div>
+            </div>
+            <div class="instrument-grid">
+              <div class="instrument"><label>Ground Speed</label><b id="i-speed">0.0</b><small> m/s</small></div>
+              <div class="instrument"><label>Altitude</label><b id="i-alt">0.0</b><small> m</small></div>
+              <div class="instrument"><label>Heading</label><b id="i-heading">0</b><small>°</small></div>
+              <div class="instrument"><label>GPS Satellites</label><b id="i-sats">0</b><small> visible</small></div>
+            </div>
+          </div>
+        </div>
+        <div class="lower-grid">
+          <div class="panel">
+            <div class="panel-header">Live Security Alerts <small id="live-alert-subtitle">0 events</small></div>
+            <div class="table-wrap"><table><thead><tr><th>Time</th><th>Severity</th><th>Detector</th><th>Observation</th></tr></thead><tbody id="live-alerts-body"></tbody></table></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">Threat Indicators</div>
+            <div class="panel-body" id="threat-indicators"></div>
+          </div>
+        </div>
+      </section>
+      <section id="view-telemetry" class="view">
+        <div class="telemetry-page">
+          <div class="panel">
+            <div class="panel-header">Attitude & Navigation</div>
+            <div class="attitude-box"><div class="attitude"><div id="telemetry-horizon" class="horizon"></div><div class="attitude-center"></div></div></div>
+            <div class="readouts">
+              <div class="readout"><label>Roll</label><b id="t-roll">0.0°</b></div>
+              <div class="readout"><label>Pitch</label><b id="t-pitch">0.0°</b></div>
+              <div class="readout"><label>Yaw</label><b id="t-yaw">0.0°</b></div>
+              <div class="readout"><label>Course</label><b id="t-course">0.0°</b></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">Normalized MAVLink Telemetry</div>
+            <div class="panel-body telemetry-grid">
+              <div class="telemetry-tile"><label>Latitude</label><b id="t-lat">—</b></div>
+              <div class="telemetry-tile"><label>Longitude</label><b id="t-lon">—</b></div>
+              <div class="telemetry-tile"><label>Altitude</label><b id="t-alt">—</b></div>
+              <div class="telemetry-tile"><label>GPS Speed</label><b id="t-gps-speed">—</b></div>
+              <div class="telemetry-tile"><label>HDOP / VDOP</label><b id="t-dop">—</b></div>
+              <div class="telemetry-tile"><label>Battery</label><b id="t-battery">—</b></div>
+              <div class="telemetry-tile"><label>RSSI</label><b id="t-rssi">—</b></div>
+              <div class="telemetry-tile"><label>Comm Drop</label><b id="t-drop">—</b></div>
+              <div class="telemetry-tile"><label>EKF H/V Ratio</label><b id="t-ekf">—</b></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="view-detectors" class="view">
+        <div class="coverage-grid" id="detector-grid"></div>
+      </section>
+      <section id="view-alerts" class="view">
+        <div class="toolbar">
+          <select id="alert-severity"><option value="">All Severities</option><option>CRITICAL</option><option>ERROR</option><option>WARNING</option><option>INFO</option><option>DEBUG</option></select>
+          <select id="alert-detector"><option value="">All Detectors</option></select>
+          <input id="alert-search" type="search" placeholder="Filter description, alert type or MITRE technique">
+          <button id="clear-alert-view" type="button">Clear View</button>
+        </div>
+        <div class="panel alert-page"><div class="panel-header">Security Event Register <small id="alert-count-label">0 events</small></div>
+          <div class="table-wrap"><table><thead><tr><th>Time</th><th>Severity</th><th>Detector</th><th>Alert Type</th><th>Description</th><th>MITRE</th><th>Confidence</th></tr></thead><tbody id="alerts-body"></tbody></table></div>
+        </div>
+      </section>
+      <section id="view-validation" class="view">
+        <div class="panel">
+          <div class="panel-header">Stage 1 Validation Matrix <small>TC-01 through TC-06</small></div>
+          <div class="panel-body validation-list" id="validation-list"></div>
+        </div>
+      </section>
+      <section id="view-forensics" class="view">
+        <div class="forensic-grid">
+          <div class="panel"><div class="panel-header">Alert Register</div><div class="panel-body">
+            <div class="instrument"><label>Records</label><b id="f-alerts">0</b></div>
+            <div class="hash" id="f-alert-path">—</div>
+            <div class="downloads"><a href="/api/logs/alerts" download>Download alerts.log</a></div>
+          </div></div>
+          <div class="panel"><div class="panel-header">Evidence Integrity</div><div class="panel-body">
+            <div class="instrument-grid">
+              <div class="instrument"><label>Evidence Records</label><b id="f-evidence">0</b></div>
+              <div class="instrument"><label>Verified SHA-256</label><b id="f-verified">0</b></div>
+            </div>
+            <p class="hash" id="f-evidence-hash">No evidence hash available</p>
+            <div class="downloads"><a href="/api/logs/evidence" download>Download evidence.log</a></div>
+          </div></div>
+          <div class="panel"><div class="panel-header">Chain of Custody</div><div class="panel-body">
+            <div class="instrument-grid">
+              <div class="instrument"><label>Chain Entries</label><b id="f-chain">0</b></div>
+              <div class="instrument"><label>Linked Tail</label><b id="f-linked">0</b></div>
+            </div>
+            <p class="hash" id="f-chain-hash">No chain hash available</p>
+            <div class="downloads"><a href="/api/logs/chain" download>Download chain_of_custody.log</a></div>
+          </div></div>
+        </div>
+        <div class="panel" style="margin-top:12px"><div class="panel-header">Latest Evidence Record</div><pre class="panel-body mono" id="f-latest">—</pre></div>
+      </section>
+      <section id="view-console" class="view">
+        <div class="toolbar"><span style="align-self:center;color:var(--steel)">Live engine and detector output</span><button id="clear-console" type="button">Clear View</button></div>
+        <div class="panel console-shell"><div class="panel-header">IDS Console</div><pre id="console-out" class="console-out"></pre></div>
+      </section>
+    </div>
+  </main>
+</div>
+<script>
+"use strict";
+const MISSION_WAYPOINTS = [
+  {lat:28.61390, lon:77.20900, alt:120},
+  {lat:28.61600, lon:77.21350, alt:125},
+  {lat:28.61420, lon:77.21800, alt:130},
+  {lat:28.61050, lon:77.21400, alt:135}
+];
+const DETECTORS = [
+  {id:"GPSSpoofingDetector", name:"GPS Spoofing", tc:"TC-01", signals:"Position jump · IMU/EKF divergence · satellite quality", mitre:"T1557"},
+  {id:"MAVLinkAnomalyDetector", name:"MAVLink Anomaly", tc:"TC-02", signals:"Sequence gaps · rate baseline · timing", mitre:"T1499 / T1557"},
+  {id:"CommandInjectionDetector", name:"Command Injection", tc:"TC-03", signals:"Unauthorized source · critical command · ACK tracking", mitre:"T1021 / T1562"},
+  {id:"DoSDetector", name:"DoS / Flooding", tc:"TC-04", signals:"Packet rate · heartbeat timeout · RSSI degradation", mitre:"T1499"},
+  {id:"TelemetryManipulationDetector", name:"Telemetry Manipulation", tc:"TC-05", signals:"Impossible attitude, velocity, power and cross-sensor checks", mitre:"T1557"},
+  {id:"FirmwareIntegrityDetector", name:"Firmware Integrity", tc:"TC-06", signals:"Boot hash · parameter hash · reboot activity", mitre:"T1542 / T1562"}
+];
+const VALIDATION = [
+  ["TC-01","GPS Spoofing","Signal quality, GPS-IMU divergence and kinematic plausibility"],
+  ["TC-02","MAVLink Anomaly","Sequence continuity, message-rate baseline and protocol timing"],
+  ["TC-03","Command Injection","Source authorization, command context and acknowledgement"],
+  ["TC-04","DoS Flooding","Message-rate flood, heartbeat and link-health degradation"],
+  ["TC-05","Telemetry Manipulation","Impossible attitude, velocity, power and cross-sensor checks"],
+  ["TC-06","Firmware Integrity","Cryptographic boot and critical-parameter integrity checks"]
+];
+const state = {alerts:[], logs:[], telemetry:{state:{},track:[]}, status:{}, simulationStatus:{}, detectors:[], forensics:null, activeView:"operations", ws:null, wsTimer:null};
+let missionMap = null;
+let missionPath = null;
+let droneMarker = null;
+let waypointLayers = [];
+let mapFocused = false;
+let simulationRunning = false;
+
+const $ = id => document.getElementById(id);
+const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = (value, digits=1) => Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
+const intNum = value => Number.isFinite(Number(value)) ? Math.round(Number(value)).toLocaleString() : "0";
+const timeText = ts => ts ? new Date(ts*1000).toLocaleTimeString() : "—";
+const sevClass = severity => `sev-${String(severity || "INFO").toLowerCase()}`;
+const detectorName = id => (DETECTORS.find(d => d.id === id) || {name:id || "Unknown"}).name;
+const alertCount = id => state.alerts.filter(a => a.detector === id).length;
+function showView(name) {
+  state.activeView = name;
+  document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === `view-${name}`));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.view === name));
+  if (name === "operations") requestAnimationFrame(() => { if (missionMap) missionMap.invalidateSize(); drawMap(); });
+}
+document.querySelectorAll(".nav-btn").forEach(btn => btn.addEventListener("click", () => showView(btn.dataset.view)));
+$("alert-severity").addEventListener("change", renderAlerts);
+$("alert-detector").addEventListener("change", renderAlerts);
+$("alert-search").addEventListener("input", renderAlerts);
+$("clear-alert-view").addEventListener("click", () => { state.alerts = []; renderAlerts(); renderValidation(); renderSideDetectors(); renderThreatIndicators(); updateSatelliteMap(); drawMap(); });
+$("clear-console").addEventListener("click", () => { $("console-out").innerHTML = ""; });
+$("mission-start").addEventListener("click", async () => {
+  const button = $("mission-start");
+  button.disabled = true;
+  try {
+    const action = simulationRunning ? "stop" : "start";
+    const response = await fetch(`/api/simulation/${action}`, {method: "POST"});
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const body = await response.json();
+    simulationRunning = Boolean(body.running);
+    state.simulationStatus = body.simulation || state.simulationStatus;
+    if (simulationRunning) {
+      mapFocused = false;
+      state.telemetry.track = [];
+      if (missionPath) missionPath.setLatLngs([]);
+      updateSatelliteMap();
+      drawMap();
+    }
+  } catch (error) {
+    console.warn("Simulation control failed", error);
+  } finally {
+    updateMissionButton();
+    button.disabled = false;
+  }
+});
+function updateMissionButton() {
+  const rtlActive = Boolean(state.simulationStatus?.rtl_active);
+  const button = $("mission-start");
+  if (rtlActive) {
+    button.textContent = "RTL TO HOME";
+    button.disabled = true;
+    button.classList.add("running");
+    return;
+  }
+  button.disabled = false;
+  button.textContent = simulationRunning ? "STOP MISSION" : "START MISSION";
+  button.classList.toggle("running", simulationRunning);
+}
+async function refreshSimulationState() {
+  try {
+    const response = await fetch("/api/simulation/state");
+    if (!response.ok) return;
+    const body = await response.json();
+    simulationRunning = Boolean(body.simulation?.running);
+    state.simulationStatus = body.simulation || {};
+    updateMissionButton();
+    updateSatelliteMap();
+  } catch (_) {}
+}
+function connectWS() {
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  state.ws = new WebSocket(`${proto}//${location.host}/ws`);
+  state.ws.onopen = () => { clearTimeout(state.wsTimer); setWS(true); };
+  state.ws.onclose = () => { setWS(false); state.wsTimer = setTimeout(connectWS, 2000); };
+  state.ws.onerror = () => state.ws.close();
+  state.ws.onmessage = event => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === "alert") onAlert(msg.data);
+      else if (msg.type === "log") onLog(msg.data);
+      else if (msg.type === "status") onStatus(msg.data);
+      else if (msg.type === "telemetry") onTelemetry(msg.data);
+    } catch (_) {}
+  };
+}
+function setWS(connected) {
+  $("h-live").classList.toggle("connected", connected);
+  $("h-ws").textContent = connected ? "LIVE" : "RECONNECTING";
+}
+function onAlert(alert) {
+  if (!alert) return;
+  state.alerts.unshift(alert);
+  renderAlerts();
+  renderSideDetectors();
+  renderDetectorCards();
+  renderValidation();
+  renderThreatIndicators();
+  updateSatelliteMap();
+  drawMap();
+}
+function onLog(log) {
+  if (!log) return;
+  const line = document.createElement("div");
+  line.className = `log-${String(log.level || "INFO").toLowerCase()}`;
+  line.textContent = `[${timeText(log.timestamp)}] ${log.level || "INFO"} ${log.logger || ""} — ${log.message || ""}`;
+  $("console-out").appendChild(line);
+  $("console-out").scrollTop = $("console-out").scrollHeight;
+}
+function onStatus(status) {
+  status = status || {};
+  // Engine and mission simulator both publish STATUS messages. Keep them separate
+  // so simulator updates never make the IDS engine appear stopped.
+  if (Object.prototype.hasOwnProperty.call(status, "state")) {
+    state.status = status;
+  } else {
+    state.simulationStatus = {...state.simulationStatus, ...status};
+    if (Object.prototype.hasOwnProperty.call(status, "simulation_running")) {
+      simulationRunning = Boolean(status.simulation_running);
+    }
+    updateMissionButton();
+  }
+  const stats = state.status.stats || {};
+  $("h-engine").textContent = String(state.status.state || "stopped").toUpperCase();
+  $("h-msgs").textContent = intNum(stats.messages_processed);
+  $("h-rate").textContent = num(stats.rate, 1);
+  $("h-alerts").textContent = intNum(stats.alerts_generated ?? state.alerts.length);
+  $("nav-msg-count").textContent = intNum(stats.messages_processed);
+  $("nav-alert-count").textContent = intNum(stats.alerts_generated ?? state.alerts.length);
+  $("nav-ops-count").textContent = intNum(stats.alerts_generated ?? state.alerts.length);
+  const uptime = Number(stats.uptime || 0);
+  const h = Math.floor(uptime / 3600), m = Math.floor(uptime % 3600 / 60), s = Math.floor(uptime % 60);
+  $("h-uptime").textContent = [h,m,s].map(x => String(x).padStart(2,"0")).join(":");
+  renderSideDetectors();
+  renderDetectorCards();
+}
+function onTelemetry(payload) {
+  state.telemetry = payload || {state:{},track:[]};
+  renderTelemetry();
+  updateSatelliteMap();
+  drawMap();
+}
+
+function renderTelemetry() {
+  const t = state.telemetry.state || {};
+  const connected = Boolean(t.connected && t.link_online !== false && (!t.last_message_time || Date.now()/1000 - t.last_message_time < 5));
+  $("h-link").textContent = connected ? "ONLINE" : "OFFLINE";
+  $("r-source").textContent = t.source || "—";
+  $("r-system").textContent = t.src_sys ? `SYS ${t.src_sys} / COMP ${t.src_comp ?? "—"}` : "—";
+  $("r-last-type").textContent = t.last_message_type || "—";
+  $("r-gps").textContent = t.fix_type ? `FIX ${t.fix_type} · ${t.satellites ?? 0} SATS` : "No Fix";
+  $("r-link").textContent = t.link_online === false ? "MAVLINK OFFLINE" : (t.rssi != null ? `RSSI ${t.rssi}` : (t.comm_drop_rate_pct != null ? `DROP ${num(t.comm_drop_rate_pct,1)}%` : "—"));
+  $("h-msgs").textContent = intNum(t.message_count ?? (state.status.stats||{}).messages_processed);
+  $("nav-msg-count").textContent = intNum(t.message_count ?? 0);
+
+  const speed = t.ground_speed_mps ?? t.groundspeed_mps ?? t.gps_speed_mps;
+  const altitude = t.relative_alt_m ?? t.hud_alt_m ?? t.gps_alt_m;
+  const heading = t.heading_deg ?? t.gps_course_deg;
+  $("i-speed").textContent = num(speed, 1);
+  $("i-alt").textContent = num(altitude, 1);
+  $("i-heading").textContent = num(heading, 0);
+  $("i-sats").textContent = String(t.satellites ?? 0);
+
+  const roll = Number(t.roll_deg || 0), pitch = Number(t.pitch_deg || 0), yaw = Number(t.yaw_deg || 0);
+  const transform = `rotate(${-roll}deg) translateY(${Math.max(-28, Math.min(28, pitch))}px)`;
+  $("horizon").style.transform = transform;
+  $("telemetry-horizon").style.transform = transform;
+  $("t-roll").textContent = `${num(roll,1)}°`;
+  $("t-pitch").textContent = `${num(pitch,1)}°`;
+  $("t-yaw").textContent = `${num(yaw,1)}°`;
+  $("t-course").textContent = `${num(heading,1)}°`;
+  $("t-lat").textContent = num(t.gps_lat ?? t.fused_lat, 7);
+  $("t-lon").textContent = num(t.gps_lon ?? t.fused_lon, 7);
+  $("t-alt").textContent = `${num(altitude,1)} m`;
+  $("t-gps-speed").textContent = `${num(t.gps_speed_mps,1)} m/s`;
+  $("t-dop").textContent = `${num(t.hdop,2)} / ${num(t.vdop,2)}`;
+  $("t-battery").textContent = `${num(t.battery_v,2)} V · ${num(t.battery_a,1)} A`;
+  $("t-rssi").textContent = t.rssi != null ? `${t.rssi} / ${t.remote_rssi ?? "—"}` : "—";
+  $("t-drop").textContent = `${num(t.comm_drop_rate_pct,2)}%`;
+  $("t-ekf").textContent = `${num(t.pos_horiz_ratio,2)} / ${num(t.pos_vert_ratio,2)}`;
+}
+function initSatelliteMap() {
+  if (!window.L) {
+    $("mission-map").style.display = "none";
+    return;
+  }
+  try {
+    missionMap = L.map("mission-map", {
+      zoomControl: true,
+      attributionControl: true,
+      preferCanvas: true,
+      worldCopyJump: true,
+      minZoom: 2,
+      maxZoom: 19
+    }).setView([20.5937, 78.9629], 5);
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: "Imagery © Esri, Maxar, Earthstar Geographics"
+    }).addTo(missionMap);
+    missionPath = L.polyline([], {
+      color: "#76FF03",
+      weight: 4,
+      opacity: 0.95
+    }).addTo(missionMap);
+    waypointLayers = MISSION_WAYPOINTS.map((point, index) => L.marker([point.lat, point.lon], {
+      icon: L.divIcon({className: "waypoint-marker", html: index === 0 ? "H" : String(index + 1), iconSize: [19, 19], iconAnchor: [9, 9]})
+    }).addTo(missionMap).bindTooltip(index === 0 ? `HOME · WAYPOINT 1<br>${point.alt} m` : `WAYPOINT ${index + 1}<br>${point.alt} m`));
+    L.polyline(MISSION_WAYPOINTS.concat([MISSION_WAYPOINTS[0]]).map(p => [p.lat, p.lon]), {
+      color: "#FFFFFF",
+      weight: 1,
+      opacity: 0.75,
+      dashArray: "7 6"
+    }).addTo(missionMap);
+    missionMap.fitBounds(L.latLngBounds(MISSION_WAYPOINTS.map(p => [p.lat, p.lon])).pad(0.18));
+    $("security-map").style.display = "none";
+    $("map-overlay").textContent = "SATELLITE VIEW · WAYPOINTS READY";
+  } catch (error) {
+    console.warn("Satellite map unavailable; using offline 2D fallback", error);
+    missionMap = null;
+    $("mission-map").style.display = "none";
+    $("security-map").style.display = "block";
+  }
+}
+function updateSatelliteMap() {
+  if (!missionMap || !missionPath) return false;
+  const track = state.telemetry.track || [];
+  const missionMode = state.simulationStatus.simulation_mode || state.simulationStatus.mode || (simulationRunning ? "MISSION_LOOP" : "READY");
+  if (!track.length) {
+    $("map-overlay").textContent = simulationRunning ? `${missionMode} · WAITING FOR FIRST GPS FIX` : "SATELLITE VIEW · WAYPOINTS READY";
+    $("map-caption").textContent = simulationRunning ? `${missionMode} active` : "Waiting for GPS telemetry";
+    return true;
+  }
+  const points = track.map(p => [p.lat, p.lon]);
+  const last = track[track.length - 1];
+  missionPath.setLatLngs(points);
+  const heading = Number(state.telemetry.state.heading_deg ?? state.telemetry.state.gps_course_deg ?? 0);
+  const droneIcon = L.divIcon({
+    className: "",
+    html: `<div class="uav-marker" style="transform:rotate(${heading}deg)"></div>`,
+    iconSize: [18, 24],
+    iconAnchor: [9, 17]
+  });
+  if (!droneMarker) {
+    droneMarker = L.marker([last.lat, last.lon], {icon: droneIcon}).addTo(missionMap).bindTooltip("Current UAV position");
+  } else {
+    droneMarker.setLatLng([last.lat, last.lon]);
+    droneMarker.setIcon(droneIcon);
+  }
+  if (!mapFocused) {
+    mapFocused = true;
+    if (points.length > 1) {
+      missionMap.fitBounds(L.latLngBounds(points).pad(0.25), {maxZoom: 17});
+    } else {
+      missionMap.setView(points[0], 17);
+    }
+  }
+  const gpsAlerts = state.alerts.filter(a => a.detector === "GPSSpoofingDetector").length;
+  $("map-overlay").textContent = `${simulationRunning ? `${missionMode} · ` : ""}${track.length} TRACK POINTS · ${gpsAlerts} GPS ALERTS`;
+  $("map-caption").textContent = `${num(last.lat,6)}, ${num(last.lon,6)} · ALT ${num(last.alt,0)} M`;
+  missionMap.invalidateSize();
+  return true;
+}
+function drawMap() {
+  if (updateSatelliteMap()) return;
+  const canvas = $("security-map");
+  if (!canvas) return;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+  canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const w = rect.width, h = rect.height;
+  ctx.fillStyle = "#ECEFF1"; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle = "#B0BEC5"; ctx.lineWidth = 1;
+  for (let x=0; x<w; x+=42) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for (let y=0; y<h; y+=42) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+  const track = state.telemetry.track || [];
+  const overlay = $("map-overlay");
+  if (!track.length) {
+    overlay.textContent = "MONITORING · NO TRACK";
+    $("map-caption").textContent = "Waiting for GPS telemetry";
+    return;
+  }
+  let minLat=Infinity,maxLat=-Infinity,minLon=Infinity,maxLon=-Infinity;
+  track.forEach(p => { minLat=Math.min(minLat,p.lat); maxLat=Math.max(maxLat,p.lat); minLon=Math.min(minLon,p.lon); maxLon=Math.max(maxLon,p.lon); });
+  const latSpan=Math.max(maxLat-minLat,0.0002), lonSpan=Math.max(maxLon-minLon,0.0002);
+  const point = p => ({x:24+(p.lon-minLon)/lonSpan*(w-48), y:h-24-(p.lat-minLat)/latSpan*(h-48)});
+  ctx.strokeStyle="#33691E"; ctx.lineWidth=2; ctx.beginPath();
+  track.forEach((p,i)=>{ const q=point(p); if(i===0)ctx.moveTo(q.x,q.y); else ctx.lineTo(q.x,q.y); });
+  ctx.stroke();
+  track.forEach(p=>{ const q=point(p); ctx.fillStyle="#607D8B"; ctx.beginPath(); ctx.arc(q.x,q.y,2.5,0,Math.PI*2); ctx.fill(); });
+  const home = point({lat: MISSION_WAYPOINTS[0].lat, lon: MISSION_WAYPOINTS[0].lon});
+  ctx.fillStyle="#263238"; ctx.fillRect(home.x-5,home.y-5,10,10);
+  const last = point(track[track.length-1]);
+  ctx.save(); ctx.translate(last.x,last.y); ctx.rotate(Number(state.telemetry.state.heading_deg || 0)*Math.PI/180);
+  ctx.fillStyle="#263238"; ctx.beginPath(); ctx.moveTo(0,-12); ctx.lineTo(8,10); ctx.lineTo(0,6); ctx.lineTo(-8,10); ctx.closePath(); ctx.fill(); ctx.restore();
+  const gpsAlerts = state.alerts.filter(a => a.detector === "GPSSpoofingDetector").slice(0,5);
+  overlay.textContent = `${track.length} TRACK POINTS · ${gpsAlerts.length} GPS ALERTS`;
+  $("map-caption").textContent = `${num(track[track.length-1].lat,6)}, ${num(track[track.length-1].lon,6)}`;
+}
+
+function renderSideDetectors() {
+  const running = String(state.status.state || "") === "running";
+  $("side-detectors").innerHTML = DETECTORS.map(d => {
+    const count = alertCount(d.id);
+    const cls = count ? "hot" : (running ? "active" : "");
+    return `<div class="detector-mini"><span class="status-dot ${cls}"></span><span>${esc(d.name)}</span><b class="mono">${count}</b></div>`;
+  }).join("");
+}
+function renderDetectorCards() {
+  const running = String(state.status.state || "") === "running";
+  $("detector-grid").innerHTML = DETECTORS.map(d => {
+    const count = alertCount(d.id);
+    return `<article class="panel detector-card">
+      <div class="panel-header">${esc(d.tc)} · ${esc(d.name)}</div>
+      <div class="panel-body">
+        <div class="card-state ${count ? "hot" : ""}"><span>Status</span><b>${count ? "DETECTION ACTIVE" : running ? "MONITORING" : "READY"}</b></div>
+        <p>${esc(d.signals)}</p>
+        <div class="telemetry-tile"><label>Session alerts</label><b>${count}</b></div>
+        <div class="mitre">MITRE ATT&CK ${esc(d.mitre)}</div>
+      </div>
+    </article>`;
+  }).join("");
+}
+function renderThreatIndicators() {
+  const critical = state.alerts.filter(a => a.severity === "CRITICAL").length;
+  const warning = state.alerts.filter(a => a.severity === "WARNING").length;
+  const detectors = new Set(state.alerts.map(a => a.detector)).size;
+  const latest = state.alerts[0];
+  $("threat-indicators").innerHTML = `
+    <div class="telemetry-grid" style="grid-template-columns:1fr 1fr">
+      <div class="telemetry-tile"><label>Critical</label><b style="color:var(--critical)">${critical}</b></div>
+      <div class="telemetry-tile"><label>Warning</label><b style="color:var(--warning)">${warning}</b></div>
+      <div class="telemetry-tile"><label>Detectors Fired</label><b>${detectors}/6</b></div>
+      <div class="telemetry-tile"><label>Evidence Chain</label><b id="indicator-chain">—</b></div>
+    </div>
+    <div style="margin-top:10px" class="telemetry-tile"><label>Latest Threat</label><b style="font-size:16px">${latest ? esc(latest.alert_type) : "None"}</b></div>`;
+  if (state.forensics) $("indicator-chain").textContent = state.forensics.chain.records;
+}
+function renderAlerts() {
+  const severity = $("alert-severity").value;
+  const detector = $("alert-detector").value;
+  const search = $("alert-search").value.toLowerCase();
+  const filtered = state.alerts.filter(a =>
+    (!severity || a.severity === severity) &&
+    (!detector || a.detector === detector) &&
+    (!search || `${a.alert_type} ${a.description} ${a.mitre_attack}`.toLowerCase().includes(search))
+  );
+  const rows = filtered.map(a => `<tr>
+    <td class="mono">${timeText(a.timestamp)}</td><td><span class="sev ${sevClass(a.severity)}">${esc(a.severity)}</span></td>
+    <td>${esc(detectorName(a.detector))}</td><td class="mono">${esc(a.alert_type)}</td>
+    <td>${esc(a.description)}</td><td class="mono" style="color:var(--steel)">${esc(a.mitre_attack || "—")}</td>
+    <td>${Math.round((a.confidence ?? 0)*100)}%</td></tr>`).join("");
+  $("alerts-body").innerHTML = rows || `<tr><td colspan="7" class="empty">No matching security events</td></tr>`;
+  $("alert-count-label").textContent = `${filtered.length} events`;
+  $("live-alert-subtitle").textContent = `${state.alerts.length} events`;
+  $("live-alerts-body").innerHTML = state.alerts.slice(0,25).map(a => `<tr><td class="mono">${timeText(a.timestamp)}</td><td><span class="sev ${sevClass(a.severity)}">${esc(a.severity)}</span></td><td>${esc(detectorName(a.detector))}</td><td>${esc(a.description)}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">Monitoring — no alerts</td></tr>`;
+  $("nav-alert-count").textContent = String(state.alerts.length);
+  $("h-alerts").textContent = String(state.alerts.length);
+}
+function renderValidation() {
+  const detectedIds = new Set(state.alerts.map(a => a.detector));
+  let detected = 0;
+  $("validation-list").innerHTML = VALIDATION.map((row, i) => {
+    const detector = DETECTORS[i];
+    const isDetected = detectedIds.has(detector.id);
+    if (isDetected) detected++;
+    return `<div class="validation-row ${isDetected ? "detected" : ""}">
+      <b class="mono">${row[0]}</b><b>${row[1]}</b><span>${row[2]}</span><span class="validation-state">${isDetected ? "DETECTED" : "READY"}</span>
+    </div>`;
+  }).join("");
+  $("nav-test-count").textContent = `${detected}/6`;
+}
+
+async function refreshForensics() {
+  try {
+    const response = await fetch("/api/forensics");
+    if (!response.ok) return;
+    const f = await response.json();
+    state.forensics = f;
+    $("f-alerts").textContent = intNum(f.alerts.records);
+    $("f-alert-path").textContent = f.alerts.path;
+    $("f-evidence").textContent = intNum(f.evidence.records);
+    $("f-verified").textContent = intNum(f.evidence.verified_records);
+    $("f-chain").textContent = intNum(f.chain.records);
+    $("f-linked").textContent = intNum(f.chain.linked_tail_records);
+    $("f-evidence-hash").textContent = f.evidence.latest_hash || "No evidence hash available";
+    $("f-chain-hash").textContent = f.chain.latest_hash || "No chain hash available";
+    $("f-latest").textContent = f.latest_evidence ? JSON.stringify(f.latest_evidence, null, 2) : "—";
+    $("f-evidence-hash").style.color = f.evidence.records > 0
+      ? (f.evidence.records === f.evidence.verified_records ? "var(--ok)" : "var(--critical)")
+      : "var(--steel)";
+    $("nav-evidence-count").textContent = intNum(f.evidence.records);
+    $("r-chain").textContent = `${f.chain.linked_tail_records}/${f.chain.records} linked`;
+    renderThreatIndicators();
+  } catch (_) {}
+}
+async function refreshDetectors() {
+  try {
+    const response = await fetch("/api/detectors");
+    if (response.ok) state.detectors = (await response.json()).detectors || [];
+    renderDetectorCards();
+  } catch (_) {}
+}
+async function init() {
+  initSatelliteMap();
+  DETECTORS.forEach(d => {
+    const option = document.createElement("option");
+    option.value = d.id;
+    option.textContent = d.name;
+    $("alert-detector").appendChild(option);
+  });
+  renderSideDetectors(); renderDetectorCards(); renderAlerts(); renderValidation(); renderThreatIndicators();
+  try {
+    const [status, alerts, telemetry] = await Promise.all([fetch("/api/status"), fetch("/api/alerts?limit=500"), fetch("/api/telemetry")]);
+    if (status.ok) onStatus(await status.json());
+    if (telemetry.ok) onTelemetry(await telemetry.json());
+    if (alerts.ok) {
+      const body = await alerts.json();
+      state.alerts = [...(body.alerts || [])].reverse();
+      renderAlerts(); renderSideDetectors(); renderDetectorCards(); renderValidation(); renderThreatIndicators(); drawMap();
+    }
+  } catch (_) {}
+  connectWS(); refreshForensics(); refreshDetectors(); refreshSimulationState();
+  setInterval(refreshForensics, 5000);
+  setInterval(refreshDetectors, 5000);
+  setInterval(refreshSimulationState, 2000);
+}
+window.addEventListener("resize", () => { if (missionMap) missionMap.invalidateSize(); drawMap(); });
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
+

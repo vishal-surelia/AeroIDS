@@ -1,0 +1,169 @@
+# Drone IDS Configuration File
+# PUSHPAK Grand Challenge 2026 - Objective 2: Drone Intrusion Detection System
+
+sitl:
+  connection_string: "udp:127.0.0.1:14550"
+  heartbeat_timeout: 5.0
+  reconnect_attempts: 3
+  reconnect_delay: 2.0
+  source_system: 255
+  source_component: 190
+
+engine:
+  processing_interval: 0.1
+  message_buffer_size: 10000
+  alert_cooldown: 1.0
+  max_alerts_per_second: 50
+  enable_statistics: true
+  statistics_interval: 30.0
+
+# GPS Spoofing Detector Settings
+gps_spoofing_detector:
+  enabled: true
+  max_position_jump_meters: 50.0
+  max_velocity_mps: 100.0
+  min_satellites: 6
+  max_hdop: 5.0
+  max_vdop: 5.0
+  enable_imu_cross_check: true
+  max_imu_gps_discrepancy_meters: 10.0
+  innovation_threshold: 3.0
+  check_absolute_timing: true
+  check_relative_timing: true
+  check_signal_power_consistency: true
+
+# MAVLink Anomaly Detector Settings
+mavlink_anomaly_detector:
+  enabled: true
+  learning_window: 300
+  rate_deviation_threshold: 3.0
+  max_sequence_gap: 10
+  enable_sequence_check: true
+  monitored_message_types:
+    - "HEARTBEAT"
+    - "SYS_STATUS"
+    - "ATTITUDE"
+    - "GLOBAL_POSITION_INT"
+    - "GPS_RAW_INT"
+    - "VFR_HUD"
+    - "COMMAND_ACK"
+    - "MISSION_ITEM"
+    - "PARAM_VALUE"
+    - "STATUSTEXT"
+  enable_payload_analysis: true
+  payload_anomaly_threshold: 0.95
+
+# Command Injection Detector Settings
+command_injection_detector:
+  enabled: true
+  allowed_command_sources:
+    - 1
+  blocked_commands: []
+  max_commands_per_second: 20
+  command_burst_threshold: 50
+  monitor_param_changes: true
+  critical_params:
+    - "SYSID_THISMAV"
+    - "SYSID_MYGCS"
+    - "ARMING_CHECK"
+    - "FS_GCS_ENABLE"
+    - "FS_EKF_THRESH"
+    - "GPS_TYPE"
+    - "EK2_ENABLE"
+  validate_mission_items: true
+  max_waypoint_distance_km: 100.0
+  expect_command_ack: true
+  ack_timeout: 5.0
+
+# Telemetry Manipulation Detector Settings
+telemetry_manipulation_detector:
+  enabled: true
+  max_attitude_rate_dps: 300.0
+  max_acceleration_g: 10.0
+  max_position_rate_mps: 100.0
+  max_velocity_change_mps2: 50.0
+  enable_baro_gps_cross_check: true
+  max_altitude_discrepancy_meters: 20.0
+  enable_compass_cross_check: true
+  max_heading_discrepancy_deg: 30.0
+  monitor_power_system: true
+  max_voltage_jump_v: 2.0
+  max_current_jump_a: 10.0
+  check_message_crc: true
+  check_signatures: true
+
+# DoS Detector Settings
+dos_detector:
+  enabled: true
+  monitor_link_quality: true
+  min_rssi_dbm: -90
+  max_packet_loss_percent: 10.0
+  max_messages_per_second: 500
+  flood_window: 1.0
+  heartbeat_timeout: 3.0
+  max_heartbeat_interval: 2.0
+  monitor_cpu_memory: true
+  max_cpu_percent: 90.0
+  max_memory_percent: 85.0
+  detect_jamming: true
+  rssi_drop_threshold_dbm: 20.0
+  snr_drop_threshold_db: 15.0
+
+# Firmware Integrity Detector Settings
+firmware_integrity_detector:
+  enabled: true
+  verify_boot_hash: true
+  expected_firmware_hash: ""
+  monitor_param_integrity: true
+  critical_param_hashes:
+    # SHA-256(str(1.0))[:16] for the normal MAVLink system ID value 1.0
+    SYSID_THISMAV: "d0ff5974b6aa52cf"
+  detect_memory_corruption: true
+  check_stack_canaries: false
+  monitor_unexpected_reboots: true
+  max_reboots_per_hour: 2
+  verify_secure_boot: false
+
+# Alerting Settings
+alerting:
+  console_output: true
+  file_output: true
+  syslog_output: false
+  network_output: false
+  alert_log_path: "logs/alerts.log"
+  evidence_log_path: "logs/evidence.log"
+  max_log_size_mb: 100
+  max_log_files: 10
+  include_timestamp: true
+  include_gps_location: true
+  include_message_raw: false
+  min_severity_console: "WARNING"
+  min_severity_file: "INFO"
+  network_host: "127.0.0.1"
+  network_port: 5140
+  network_protocol: "UDP"
+
+# Storage Settings
+storage:
+  database_path: "data/ids.db"
+  evidence_retention_days: 90
+  alert_retention_days: 365
+  statistics_retention_days: 30
+  enable_compression: true
+  backup_interval_hours: 24
+
+# Reporting Settings
+reporting:
+  generate_periodic_reports: true
+  report_interval_hours: 24
+  report_output_dir: "reports/"
+  include_charts: true
+  executive_summary: true
+
+# Forensics / Chain of Custody
+forensics:
+  enable_hash_chaining: true
+  hash_algorithm: "SHA256"
+  sign_evidence: false
+  evidence_encryption: false
+  chain_of_custody_log: "logs/chain_of_custody.log"
