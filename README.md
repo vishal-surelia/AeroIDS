@@ -334,6 +334,3 @@ simulationfix/
 
 ---
 
-## Safety and Demonstration Boundary
-
-The built-in mission simulator is for demonstration only. It publishes synthetic telemetry to the IDS but never arms, controls, or sends flight commands to a real aircraft. Real-vehicle use should remain passive monitoring until the IDS has undergone hardware-in-the-loop and operational safety validation.
